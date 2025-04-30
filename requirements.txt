@@ -2,3 +2,5 @@ streamlit
 pandas
 numpy
 yfinance==0.2.28
+yahoo_fin
+requests_html
