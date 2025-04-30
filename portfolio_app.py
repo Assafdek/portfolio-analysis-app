@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 import yfinance as yf
+import time
 
 def get_stock_data(ticker, start_date, end_date, market):
     if market == "Australia" and not ticker.upper().endswith('.AX'):
@@ -10,13 +11,18 @@ def get_stock_data(ticker, start_date, end_date, market):
     else:
         formatted_ticker = ticker.upper()
     
-    try:
-        data = yf.download(formatted_ticker, start=start_date, end=end_date)
-        if data.empty:
-            raise ValueError("No data found, symbol may be delisted")
-        return data['Close']
-    except Exception as e:
-        st.error(f"Error fetching data for {formatted_ticker}: {str(e)}")
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            data = yf.download(formatted_ticker, start=start_date, end=end_date)
+            if data.empty:
+                raise ValueError("No data found, symbol may be delisted")
+            return data['Close']
+        except Exception as e:
+            if attempt < max_retries - 1:  # i.e. if it's not the last attempt
+                time.sleep(5)  # Wait for 5 seconds before retrying
+            else:
+                st.error(f"Error fetching data for {formatted_ticker}: {str(e)}")
     return None
 
 def calculate_returns(prices):
