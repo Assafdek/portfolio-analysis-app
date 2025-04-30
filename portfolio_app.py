@@ -3,8 +3,6 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 import yfinance as yf
-from pandas_datareader._utils import RemoteDataError
-import sys
 
 def get_stock_data(ticker, start_date, end_date, market):
     if market == "Australia" and not ticker.upper().endswith('.AX'):
@@ -13,21 +11,12 @@ def get_stock_data(ticker, start_date, end_date, market):
         formatted_ticker = ticker.upper()
     
     try:
-        # Try yfinance first
         data = yf.download(formatted_ticker, start=start_date, end=end_date)
         if data.empty:
             raise ValueError("No data found, symbol may be delisted")
         return data['Close']
     except Exception as e:
-        st.warning(f"Error with yfinance for {formatted_ticker}: {str(e)}")
-        try:
-            # Fallback to pandas_datareader
-            data = yf.download(formatted_ticker, start=start_date, end=end_date)
-            return data['Close']
-        except RemoteDataError as e:
-            st.error(f"Error fetching data for {formatted_ticker}: {str(e)}")
-        except Exception as e:
-            st.error(f"Unexpected error for {formatted_ticker}: {str(e)}")
+        st.error(f"Error fetching data for {formatted_ticker}: {str(e)}")
     return None
 
 def calculate_returns(prices):
@@ -139,4 +128,3 @@ st.markdown("""
 - Weights must sum to 1.0 (100%).
 - Data is fetched for the last 2 years.
 """)
-
