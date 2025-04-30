@@ -4,16 +4,23 @@ import numpy as np
 from datetime import datetime, timedelta
 import requests
 import io
+import yfinance as yf
 
 @st.cache_data(ttl=3600)
 def get_stock_data(ticker, start_date, end_date):
     try:
-        url = f"https://query1.finance.yahoo.com/v7/finance/download/{ticker}?period1={int(start_date.timestamp())}&period2={int(end_date.timestamp())}&interval=1d&events=history&includeAdjustedClose=true"
-        response = requests.get(url)
-        if response.status_code != 200:
-            raise ValueError(f"Unable to fetch data for {ticker}")
-        df = pd.read_csv(io.StringIO(response.text), parse_dates=['Date'], index_col='Date')
-        return df['Close']
+        # For Australian stocks, try both with and without .AX
+        if ticker.upper().endswith('.AX'):
+            tickers_to_try = [ticker, ticker[:-3]]
+        else:
+            tickers_to_try = [ticker, ticker + '.AX']
+
+        for t in tickers_to_try:
+            data = yf.Ticker(t).history(start=start_date, end=end_date)
+            if not data.empty:
+                return data['Close']
+        
+        raise ValueError(f"No data found for {ticker}")
     except Exception as e:
         st.error(f"Error fetching data for {ticker}: {str(e)}")
         return None
