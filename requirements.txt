@@ -2,4 +2,4 @@ streamlit
 pandas
 numpy
 yfinance==0.2.28
-requests
+pandas-datareader
