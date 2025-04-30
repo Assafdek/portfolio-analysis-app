@@ -2,15 +2,18 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
-import yfinance as yf
+import requests
+import io
 
 @st.cache_data(ttl=3600)
 def get_stock_data(ticker, start_date, end_date):
     try:
-        data = yf.download(ticker, start=start_date, end=end_date)
-        if data.empty:
-            raise ValueError(f"No data found for {ticker}")
-        return data['Close']
+        url = f"https://query1.finance.yahoo.com/v7/finance/download/{ticker}?period1={int(start_date.timestamp())}&period2={int(end_date.timestamp())}&interval=1d&events=history&includeAdjustedClose=true"
+        response = requests.get(url)
+        if response.status_code != 200:
+            raise ValueError(f"Unable to fetch data for {ticker}")
+        df = pd.read_csv(io.StringIO(response.text), parse_dates=['Date'], index_col='Date')
+        return df['Close']
     except Exception as e:
         st.error(f"Error fetching data for {ticker}: {str(e)}")
         return None
