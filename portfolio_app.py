@@ -4,7 +4,7 @@ import numpy as np
 from datetime import datetime, timedelta
 import yfinance as yf
 
-@st.cache(ttl=3600, allow_output_mutation=True)
+@st.cache_data(ttl=3600)
 def get_stock_data(ticker, start_date, end_date):
     try:
         # For Australian stocks, try both with and without .AX
@@ -14,7 +14,7 @@ def get_stock_data(ticker, start_date, end_date):
             tickers_to_try = [ticker, ticker + '.AX']
 
         for t in tickers_to_try:
-            data = yf.download(t, start=start_date, end=end_date, progress=False)
+            data = yf.Ticker(t).history(start=start_date, end=end_date)
             if not data.empty:
                 return data['Close']
         
