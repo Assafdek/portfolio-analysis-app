@@ -3,23 +3,19 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 import yfinance as yf
+from yahoo_fin import stock_info as si
 
 @st.cache_data(ttl=3600)
 def get_stock_data(ticker, start_date, end_date):
     try:
-        # For Australian stocks, try both with and without .AX
         if ticker.upper().endswith('.AX'):
-            tickers_to_try = [ticker, ticker[:-3]]
+            # Use yahoo_fin for Australian stocks
+            data = si.get_data(ticker, start_date=start_date, end_date=end_date)
+            return data['close']
         else:
-            tickers_to_try = [ticker, ticker + '.AX']
-
-        for t in tickers_to_try:
-            data = yf.Ticker(t).history(start=start_date, end=end_date)
-            if not data.empty:
-                return data['Close']
-        
-        st.warning(f"No data available for {ticker}. Please check the ticker symbol.")
-        return None
+            # Use yfinance for other stocks
+            data = yf.Ticker(ticker).history(start=start_date, end=end_date)
+            return data['Close']
     except Exception as e:
         st.error(f"Error fetching data for {ticker}: {str(e)}")
         return None
@@ -36,7 +32,7 @@ st.title('Portfolio Analysis Tool')
 
 st.sidebar.markdown("""
 ### Finding Ticker Symbols
-- For Australian stocks, you can add '.AX' to the end (e.g., CBA.AX) or leave it off (e.g., CBA)
+- For Australian stocks, add '.AX' to the end (e.g., ANZ.AX)
 - ASX tickers: [ASX Website](https://www2.asx.com.au/markets/trade-our-cash-market/directory)
 - US tickers: [NASDAQ](https://www.nasdaq.com/market-activity/stocks/screener)
 - For other markets: Use [Google Finance](https://www.google.com/finance)
@@ -95,7 +91,7 @@ if st.button('Calculate Portfolio Stats'):
 st.markdown("""
 ### Notes:
 - Make sure to use correct ticker symbols for each market.
-- For Australian stocks, you can add '.AX' to the end (e.g., CBA.AX) or leave it off (e.g., CBA).
+- For Australian stocks, add '.AX' to the end (e.g., ANZ.AX).
 - Weights must sum to 1.0 (100%).
 - Data is fetched for the last 2 years.
 """)
