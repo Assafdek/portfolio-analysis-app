@@ -7,11 +7,19 @@ import yfinance as yf
 @st.cache(ttl=3600, allow_output_mutation=True)
 def get_stock_data(ticker, start_date, end_date):
     try:
-        data = yf.download(ticker, start=start_date, end=end_date, progress=False)
-        if data.empty:
-            st.warning(f"No data available for {ticker}. Please check the ticker symbol.")
-            return None
-        return data['Close']
+        # For Australian stocks, try both with and without .AX
+        if ticker.upper().endswith('.AX'):
+            tickers_to_try = [ticker, ticker[:-3]]
+        else:
+            tickers_to_try = [ticker, ticker + '.AX']
+
+        for t in tickers_to_try:
+            data = yf.download(t, start=start_date, end=end_date, progress=False)
+            if not data.empty:
+                return data['Close']
+        
+        st.warning(f"No data available for {ticker}. Please check the ticker symbol.")
+        return None
     except Exception as e:
         st.error(f"Error fetching data for {ticker}: {str(e)}")
         return None
@@ -28,7 +36,7 @@ st.title('Portfolio Analysis Tool')
 
 st.sidebar.markdown("""
 ### Finding Ticker Symbols
-- For Australian stocks, add '.AX' to the end (e.g., CBA.AX)
+- For Australian stocks, you can add '.AX' to the end (e.g., CBA.AX) or leave it off (e.g., CBA)
 - ASX tickers: [ASX Website](https://www2.asx.com.au/markets/trade-our-cash-market/directory)
 - US tickers: [NASDAQ](https://www.nasdaq.com/market-activity/stocks/screener)
 - For other markets: Use [Google Finance](https://www.google.com/finance)
@@ -87,7 +95,7 @@ if st.button('Calculate Portfolio Stats'):
 st.markdown("""
 ### Notes:
 - Make sure to use correct ticker symbols for each market.
-- For Australian stocks, add '.AX' to the end (e.g., CBA.AX).
+- For Australian stocks, you can add '.AX' to the end (e.g., CBA.AX) or leave it off (e.g., CBA).
 - Weights must sum to 1.0 (100%).
 - Data is fetched for the last 2 years.
 """)
