@@ -3,22 +3,25 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 import yfinance as yf
-from yahoo_fin import stock_info as si
+import time
+import requests
 
 @st.cache_data(ttl=3600)
-def get_stock_data(ticker, start_date, end_date):
-    try:
-        if ticker.upper().endswith('.AX'):
-            # Use yahoo_fin for Australian stocks
-            data = si.get_data(ticker, start_date=start_date, end_date=end_date)
-            return data['close']
-        else:
-            # Use yfinance for other stocks
+def get_stock_data(ticker, start_date, end_date, max_retries=3):
+    for attempt in range(max_retries):
+        try:
             data = yf.Ticker(ticker).history(start=start_date, end=end_date)
-            return data['Close']
-    except Exception as e:
-        st.error(f"Error fetching data for {ticker}: {str(e)}")
-        return None
+            if not data.empty:
+                return data['Close']
+            else:
+                raise ValueError(f"No data available for {ticker}")
+        except Exception as e:
+            if attempt < max_retries - 1:
+                time.sleep(1)  # Wait for 1 second before retrying
+                continue
+            else:
+                st.error(f"Error fetching data for {ticker}: {str(e)}")
+                return None
 
 def calculate_returns(prices):
     return prices.pct_change().dropna()
@@ -32,7 +35,7 @@ st.title('Portfolio Analysis Tool')
 
 st.sidebar.markdown("""
 ### Finding Ticker Symbols
-- For Australian stocks, add '.AX' to the end (e.g., ANZ.AX)
+- For Australian stocks, add '.AX' to the end (e.g., CBA.AX)
 - ASX tickers: [ASX Website](https://www2.asx.com.au/markets/trade-our-cash-market/directory)
 - US tickers: [NASDAQ](https://www.nasdaq.com/market-activity/stocks/screener)
 - For other markets: Use [Google Finance](https://www.google.com/finance)
@@ -91,7 +94,7 @@ if st.button('Calculate Portfolio Stats'):
 st.markdown("""
 ### Notes:
 - Make sure to use correct ticker symbols for each market.
-- For Australian stocks, add '.AX' to the end (e.g., ANZ.AX).
+- For Australian stocks, add '.AX' to the end (e.g., CBA.AX).
 - Weights must sum to 1.0 (100%).
 - Data is fetched for the last 2 years.
 """)
