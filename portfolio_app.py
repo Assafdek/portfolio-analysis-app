@@ -4,26 +4,33 @@ import numpy as np
 from datetime import datetime, timedelta
 import requests
 import io
-import yfinance as yf
 
 @st.cache_data(ttl=3600)
 def get_stock_data(ticker, start_date, end_date):
-    try:
-        # For Australian stocks, try both with and without .AX
-        if ticker.upper().endswith('.AX'):
-            tickers_to_try = [ticker, ticker[:-3]]
-        else:
-            tickers_to_try = [ticker, ticker + '.AX']
-
-        for t in tickers_to_try:
-            data = yf.Ticker(t).history(start=start_date, end=end_date)
-            if not data.empty:
-                return data['Close']
-        
-        raise ValueError(f"No data found for {ticker}")
-    except Exception as e:
-        st.error(f"Error fetching data for {ticker}: {str(e)}")
-        return None
+    base_url = "https://query1.finance.yahoo.com/v7/finance/download/{}"
+    params = {
+        "period1": int(start_date.timestamp()),
+        "period2": int(end_date.timestamp()),
+        "interval": "1d",
+        "events": "history",
+        "includeAdjustedClose": "true"
+    }
+    
+    headers = {'User-Agent': 'Mozilla/5.0'}
+    
+    for suffix in ['', '.AX']:
+        try:
+            url = base_url.format(ticker + suffix)
+            response = requests.get(url, params=params, headers=headers)
+            if response.status_code == 200:
+                df = pd.read_csv(io.StringIO(response.text), parse_dates=['Date'], index_col='Date')
+                if not df.empty:
+                    return df['Close']
+        except Exception as e:
+            st.warning(f"Error fetching {ticker + suffix}: {str(e)}")
+    
+    st.error(f"Could not fetch data for {ticker}")
+    return None
 
 def calculate_returns(prices):
     return prices.pct_change().dropna()
@@ -37,7 +44,7 @@ st.title('Portfolio Analysis Tool')
 
 st.sidebar.markdown("""
 ### Finding Ticker Symbols
-- For Australian stocks, add '.AX' to the end (e.g., BHP.AX)
+- For Australian stocks, you can add '.AX' to the end (e.g., BHP.AX) or leave it off (e.g., BHP)
 - ASX tickers: [ASX Website](https://www2.asx.com.au/markets/trade-our-cash-market/directory)
 - US tickers: [NASDAQ](https://www.nasdaq.com/market-activity/stocks/screener)
 - For other markets: Use [Google Finance](https://www.google.com/finance)
@@ -96,7 +103,7 @@ if st.button('Calculate Portfolio Stats'):
 st.markdown("""
 ### Notes:
 - Make sure to use correct ticker symbols for each market.
-- For Australian stocks, add '.AX' to the end (e.g., BHP.AX).
+- For Australian stocks, you can add '.AX' to the end (e.g., BHP.AX) or leave it off (e.g., BHP).
 - Weights must sum to 1.0 (100%).
 - Data is fetched for the last 2 years.
 """)
