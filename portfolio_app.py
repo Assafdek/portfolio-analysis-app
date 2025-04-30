@@ -3,14 +3,13 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 import yfinance as yf
-import time
 
-@st.cache(ttl=3600)
+@st.cache(ttl=3600, allow_output_mutation=True)
 def get_stock_data(ticker, start_date, end_date):
     try:
-        stock = yf.Ticker(ticker)
-        data = stock.history(start=start_date, end=end_date)
+        data = yf.download(ticker, start=start_date, end=end_date, progress=False)
         if data.empty:
+            st.warning(f"No data available for {ticker}. Please check the ticker symbol.")
             return None
         return data['Close']
     except Exception as e:
@@ -29,7 +28,7 @@ st.title('Portfolio Analysis Tool')
 
 st.sidebar.markdown("""
 ### Finding Ticker Symbols
-- For Australian stocks, add '.AX' to the end (e.g., BHP.AX)
+- For Australian stocks, add '.AX' to the end (e.g., CBA.AX)
 - ASX tickers: [ASX Website](https://www2.asx.com.au/markets/trade-our-cash-market/directory)
 - US tickers: [NASDAQ](https://www.nasdaq.com/market-activity/stocks/screener)
 - For other markets: Use [Google Finance](https://www.google.com/finance)
@@ -63,11 +62,10 @@ if st.button('Calculate Portfolio Stats'):
 
         for ticker in tickers:
             prices = get_stock_data(ticker, start_date, end_date)
-            if prices is not None:
+            if prices is not None and not prices.empty:
                 returns = calculate_returns(prices)
                 all_returns.append(returns)
                 valid_tickers.append(ticker)
-            time.sleep(1)  # Add a small delay between requests
 
         if len(all_returns) == len(tickers):
             returns_df = pd.concat(all_returns, axis=1)
@@ -89,7 +87,7 @@ if st.button('Calculate Portfolio Stats'):
 st.markdown("""
 ### Notes:
 - Make sure to use correct ticker symbols for each market.
-- For Australian stocks, add '.AX' to the end (e.g., BHP.AX).
+- For Australian stocks, add '.AX' to the end (e.g., CBA.AX).
 - Weights must sum to 1.0 (100%).
 - Data is fetched for the last 2 years.
 """)
